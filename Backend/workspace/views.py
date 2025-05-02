@@ -332,3 +332,33 @@ def delete_workspace(request, workspace_id):
             return JsonResponse({"error": str(e)}, status=500)
     else:
         return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+# Get workspaces for current user
+def get_user_workspaces(request):
+    try:
+        # Get the user from the request (assuming middleware adds user to request)
+        payload = request.user
+        user_id = payload.get("id")
+        
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+        
+        # Get user's workspaces through UserWorkspace
+        user_workspaces = UserWorkspace.objects.filter(user_id=user_id).select_related('workspace')
+        
+        # Extract workspace data
+        data = [
+            {
+                "id": user_workspace.workspace.id,
+                "name": user_workspace.workspace.name,
+                "created_at": user_workspace.workspace.created_at,
+                "updated_at": user_workspace.workspace.updated_at,
+                "role": user_workspace.role
+            }
+            for user_workspace in user_workspaces
+        ]
+        
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
