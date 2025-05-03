@@ -4,13 +4,9 @@ import axios from "axios";
 import Navbar from "../../components/Navbar";
 
 const Board = () => {
-  const { id: workspaceId } = useParams(); // Renamed for clarity
-  const [board, setBoard] = useState({
-    id: null, // Initialize as null since id is workspace ID, not board ID
-    name: "",
-    tasks: [],
-    workspace: null
-  });
+  const { id: workspaceId } = useParams(); // This is the workspace ID from the URL
+  const [boards, setBoards] = useState([]); // Store all boards
+  const [selectedBoardId, setSelectedBoardId] = useState(null); // Track which board is selected
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
@@ -21,60 +17,61 @@ const Board = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [animateContent, setAnimateContent] = useState(false);
 
-  // Group tasks by priority
+  // Get the currently selected board
+  const selectedBoard = boards.find(board => board.id === selectedBoardId) || 
+                       (boards.length > 0 ? boards[0] : { id: null, name: "", tasks: [] });
+
+  // Group tasks by priority for the SELECTED board only
   const groupedTasks = {
-    high: board.tasks.filter(task => task.priority === "high"),
-    medium: board.tasks.filter(task => task.priority === "medium"),
-    low: board.tasks.filter(task => task.priority === "low")
+    high: selectedBoard.tasks ? selectedBoard.tasks.filter(task => task.priority === "high") : [],
+    medium: selectedBoard.tasks ? selectedBoard.tasks.filter(task => task.priority === "medium") : [],
+    low: selectedBoard.tasks ? selectedBoard.tasks.filter(task => task.priority === "low") : []
   };
 
-  // Fetch board details and tasks by workspace ID
+  // Fetch boards and their tasks for the workspace
   useEffect(() => {
-    const fetchBoardData = async () => {
+    const fetchBoardsData = async () => {
       setLoading(true);
       try {
-        // Fetch boards for the workspace
+        // Fetch all boards for this workspace
         const response = await axios.get(`http://localhost:8000/board/all/${workspaceId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-
-        // Assuming the API returns an array of boards; select the first one
-        const boardData = response.data[0]; // Adjust if response structure differs
-        if (!boardData) {
-          throw new Error("No board found for this workspace.");
+        
+        // Process the response to ensure each board has its own tasks
+        const boardsData = response.data;
+        setBoards(boardsData);
+        
+        // Set the first board as selected by default
+        if (boardsData.length > 0 && !selectedBoardId) {
+          setSelectedBoardId(boardsData[0].id);
         }
-
-        setBoard({
-          id: boardData.id,
-          name: boardData.name,
-          tasks: boardData.tasks || [],
-          workspace: boardData.workspace
-        });
-
+        
         setLoading(false);
         setTimeout(() => setAnimateContent(true), 100);
       } catch (err) {
-        console.error("Error fetching board data:", err);
-        setError("Failed to load board data. Please try again later.");
+        console.error("Error fetching boards data:", err);
+        setError("Failed to load boards data. Please try again later.");
         setLoading(false);
       }
     };
 
-    fetchBoardData();
+    fetchBoardsData();
   }, [workspaceId]);
 
   // Create a new task
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (!board.id) {
-      alert("Board ID is not available. Please try again.");
+    if (!selectedBoardId) {
+      alert("No board selected. Please select a board first.");
       return;
     }
+    
     if (newTaskName.trim()) {
       try {
-        const response = await axios.post(`http://localhost:8000/task/create/${board.id}`, {
+        const response = await axios.post(`http://localhost:8000/task/create/${selectedBoardId}`, {
           name: newTaskName,
           description: newTaskDescription,
           priority: newTaskPriority
@@ -84,12 +81,19 @@ const Board = () => {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-
-        setBoard(prev => ({
-          ...prev,
-          tasks: [...prev.tasks, response.data]
-        }));
-
+        
+        // Add the new task to the correct board only
+        const newTask = response.data.task;
+        
+        setBoards(prevBoards => 
+          prevBoards.map(board => 
+            board.id === selectedBoardId 
+              ? { ...board, tasks: [...board.tasks, newTask] }
+              : board
+          )
+        );
+        
+        // Reset form
         setNewTaskName("");
         setNewTaskDescription("");
         setNewTaskPriority("medium");
@@ -104,14 +108,15 @@ const Board = () => {
   // Update an existing task
   const handleUpdateTask = async (e) => {
     e.preventDefault();
-    if (!board.id || !selectedTask) {
-      alert("Board or task ID is not available. Please try again.");
+    if (!selectedBoardId || !selectedTask) {
+      alert("No board or task selected.");
       return;
     }
+    
     if (newTaskName.trim()) {
       try {
         const response = await axios.put(
-          `http://localhost:8000/task/update/${board.id}/t/${selectedTask.id}`,
+          `http://localhost:8000/task/update/${selectedBoardId}/t/${selectedTask.id}`, 
           {
             name: newTaskName,
             description: newTaskDescription,
@@ -124,14 +129,24 @@ const Board = () => {
             }
           }
         );
-
-        setBoard({
-          ...board,
-          tasks: board.tasks.map(task =>
-            task.id === selectedTask.id ? response.data : task
+        
+        // Update the task in the correct board only
+        const updatedTask = response.data;
+        
+        setBoards(prevBoards => 
+          prevBoards.map(board => 
+            board.id === selectedBoardId 
+              ? { 
+                  ...board, 
+                  tasks: board.tasks.map(task => 
+                    task.id === selectedTask.id ? updatedTask : task
+                  ) 
+                }
+              : board
           )
-        });
-
+        );
+        
+        // Reset form
         setNewTaskName("");
         setNewTaskDescription("");
         setNewTaskPriority("medium");
@@ -146,23 +161,29 @@ const Board = () => {
 
   // Delete a task
   const handleDeleteTask = async (taskId) => {
-    if (!board.id) {
-      alert("Board ID is not available. Please try again.");
+    if (!selectedBoardId) {
+      alert("No board selected.");
       return;
     }
+    
     if (window.confirm("Are you sure you want to delete this task?")) {
       try {
-        await axios.delete(`http://localhost:8000/task/delete/${board.id}/t/${taskId}`, {
+        await axios.delete(`http://localhost:8000/task/delete/${selectedBoardId}/t/${taskId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-
-        setBoard({
-          ...board,
-          tasks: board.tasks.filter(task => task.id !== taskId)
-        });
-
+        
+        // Remove the task from the correct board only
+        setBoards(prevBoards => 
+          prevBoards.map(board => 
+            board.id === selectedBoardId 
+              ? { ...board, tasks: board.tasks.filter(task => task.id !== taskId) }
+              : board
+          )
+        );
+        
+        // Close modal if the deleted task was selected
         if (selectedTask && selectedTask.id === taskId) {
           setIsUpdateTaskOpen(false);
           setSelectedTask(null);
@@ -172,6 +193,11 @@ const Board = () => {
         alert("Failed to delete task. Please try again.");
       }
     }
+  };
+
+  // Handle board selection
+  const handleBoardSelect = (boardId) => {
+    setSelectedBoardId(boardId);
   };
 
   // Open the update modal for a task
@@ -214,8 +240,8 @@ const Board = () => {
         <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             <p>{error}</p>
-            <button
-              onClick={() => window.location.reload()}
+            <button 
+              onClick={() => window.location.reload()} 
               className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
               Retry
@@ -232,23 +258,45 @@ const Board = () => {
       <div className="min-h-screen bg-gray-50 pt-16">
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Board Selection */}
+          <div className="mb-6">
+            <div className="flex items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900 mr-4">Select Board:</h3>
+              <div className="flex space-x-2 overflow-x-auto">
+                {boards.map(board => (
+                  <button
+                    key={board.id}
+                    onClick={() => handleBoardSelect(board.id)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedBoardId === board.id
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                  >
+                    {board.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-1">
-                {board.name}
+                {selectedBoard.name}
               </h2>
-              {board.workspace && (
+              {selectedBoard.workspace && (
                 <p className="text-sm text-gray-500">
-                  Workspace: {board.workspace.name}
+                  Workspace: {selectedBoard.workspace.name}
                 </p>
               )}
             </div>
             <button
               onClick={() => setIsCreateTaskOpen(true)}
-              disabled={loading || !board.id}
+              disabled={!selectedBoardId}
               className={`px-6 py-2 rounded-md font-medium transition-colors duration-200 ${
-                loading || !board.id ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
+                !selectedBoardId ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
             >
               + New Task
@@ -256,11 +304,11 @@ const Board = () => {
           </div>
 
           {/* Priority-based Task Groups */}
-          <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <div className="flex space-x-4 overflow-x-auto pb-4 pl-20 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             {Object.entries(groupedTasks).map(([priority, tasks], priorityIndex) => (
               <div
                 key={priority}
-                className={`bg-white p-4 rounded-lg shadow-sm w-72 flex-shrink-0 transition-all duration-500 ${
+                className={`bg-white p-4 rounded-lg shadow-sm w-85 flex-shrink-0 transition-all duration-500 ${
                   animateContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
                 }`}
                 style={{ transitionDelay: `${priorityIndex * 100}ms` }}

@@ -20,6 +20,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/board/:id" element={<Board />} />
         
+        
        
       </Routes>
     </Router>

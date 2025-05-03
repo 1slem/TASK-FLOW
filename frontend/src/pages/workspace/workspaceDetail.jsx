@@ -25,7 +25,7 @@ const WorkspaceDetail = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
-
+  
   const fetchWorkspaceDetails = useCallback(() => {
     setLoading(true);
     
@@ -450,7 +450,7 @@ const WorkspaceDetail = () => {
                       </h3>
                     </Link>
                     <p className="text-gray-600 text-sm">
-                      {board.members?.length || 0} member{board.members?.length !== 1 ? 's' : ''}
+                    {board.tasks?.length || 0} {board.tasks?.length === 1 ? "task" : "tasks"}
                     </p>
                   </div>
                 ))
