@@ -1,174 +1,445 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+import Navbar from "../../components/Navbar";
 
 const Board = () => {
-  // Get board ID from URL
-  const { id } = useParams();
-
-  // Mock data for board (replace with API data in production)
+  const { id: workspaceId } = useParams(); // Renamed for clarity
   const [board, setBoard] = useState({
-    id: parseInt(id),
-    name: `Board ${id}`,
-    lists: [
-      {
-        id: 1,
-        name: 'To Do',
-        tasks: [
-          { id: 1, name: 'Design homepage' },
-          { id: 2, name: 'Write documentation' },
-        ],
-      },
-      {
-        id: 2,
-        name: 'In Progress',
-        tasks: [{ id: 3, name: 'Develop API' }],
-      },
-      {
-        id: 3,
-        name: 'Done',
-        tasks: [{ id: 4, name: 'Test login feature' }],
-      },
-    ],
+    id: null, // Initialize as null since id is workspace ID, not board ID
+    name: "",
+    tasks: [],
+    workspace: null
   });
-
-  // State for create task modal
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
-  const [newTaskName, setNewTaskName] = useState('');
+  const [isUpdateTaskOpen, setIsUpdateTaskOpen] = useState(false);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState("medium");
+  const [selectedTask, setSelectedTask] = useState(null);
   const [animateContent, setAnimateContent] = useState(false);
 
-  // Trigger entrance animations on mount
-  useEffect(() => {
-    setTimeout(() => setAnimateContent(true), 100);
-  }, []);
+  // Group tasks by priority
+  const groupedTasks = {
+    high: board.tasks.filter(task => task.priority === "high"),
+    medium: board.tasks.filter(task => task.priority === "medium"),
+    low: board.tasks.filter(task => task.priority === "low")
+  };
 
-  // Handle creating a new task
-  const handleCreateTask = (e) => {
+  // Fetch board details and tasks by workspace ID
+  useEffect(() => {
+    const fetchBoardData = async () => {
+      setLoading(true);
+      try {
+        // Fetch boards for the workspace
+        const response = await axios.get(`http://localhost:8000/board/all/${workspaceId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        // Assuming the API returns an array of boards; select the first one
+        const boardData = response.data[0]; // Adjust if response structure differs
+        if (!boardData) {
+          throw new Error("No board found for this workspace.");
+        }
+
+        setBoard({
+          id: boardData.id,
+          name: boardData.name,
+          tasks: boardData.tasks || [],
+          workspace: boardData.workspace
+        });
+
+        setLoading(false);
+        setTimeout(() => setAnimateContent(true), 100);
+      } catch (err) {
+        console.error("Error fetching board data:", err);
+        setError("Failed to load board data. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    fetchBoardData();
+  }, [workspaceId]);
+
+  // Create a new task
+  const handleCreateTask = async (e) => {
     e.preventDefault();
+    if (!board.id) {
+      alert("Board ID is not available. Please try again.");
+      return;
+    }
     if (newTaskName.trim()) {
-      // In production, send API request to create task
-      setBoard({
-        ...board,
-        lists: board.lists.map((list) =>
-          list.id === 1 // Add to first list (To Do) for demo
-            ? {
-                ...list,
-                tasks: [
-                  ...list.tasks,
-                  { id: list.tasks.length + 1, name: newTaskName },
-                ],
-              }
-            : list
-        ),
-      });
-      setNewTaskName('');
-      setIsCreateTaskOpen(false);
+      try {
+        const response = await axios.post(`http://localhost:8000/task/create/${board.id}`, {
+          name: newTaskName,
+          description: newTaskDescription,
+          priority: newTaskPriority
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        setBoard(prev => ({
+          ...prev,
+          tasks: [...prev.tasks, response.data]
+        }));
+
+        setNewTaskName("");
+        setNewTaskDescription("");
+        setNewTaskPriority("medium");
+        setIsCreateTaskOpen(false);
+      } catch (err) {
+        console.error("Error creating task:", err);
+        alert("Failed to create task. Please try again.");
+      }
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-gray-100 to-blue-100 pt-16 relative overflow-hidden">
-      {/* Subtle Background Pattern */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <svg className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-              <circle cx="20" cy="20" r="1" fill="#3B82F6" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#pattern)" />
-        </svg>
-      </div>
+  // Update an existing task
+  const handleUpdateTask = async (e) => {
+    e.preventDefault();
+    if (!board.id || !selectedTask) {
+      alert("Board or task ID is not available. Please try again.");
+      return;
+    }
+    if (newTaskName.trim()) {
+      try {
+        const response = await axios.put(
+          `http://localhost:8000/task/update/${board.id}/t/${selectedTask.id}`,
+          {
+            name: newTaskName,
+            description: newTaskDescription,
+            priority: newTaskPriority
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-10 animate-slide-down">
-          <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-4 sm:mb-0">
-            {board.name}
-          </h2>
-          <button
-            onClick={() => setIsCreateTaskOpen(true)}
-            className="relative bg-blue-600 text-white px-6 py-3 rounded-full font-semibold overflow-hidden group"
-          >
-            <span className="relative z-10">Create Task</span>
-            <span className="absolute inset-0 bg-blue-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
-          </button>
+        setBoard({
+          ...board,
+          tasks: board.tasks.map(task =>
+            task.id === selectedTask.id ? response.data : task
+          )
+        });
+
+        setNewTaskName("");
+        setNewTaskDescription("");
+        setNewTaskPriority("medium");
+        setIsUpdateTaskOpen(false);
+        setSelectedTask(null);
+      } catch (err) {
+        console.error("Error updating task:", err);
+        alert("Failed to update task. Please try again.");
+      }
+    }
+  };
+
+  // Delete a task
+  const handleDeleteTask = async (taskId) => {
+    if (!board.id) {
+      alert("Board ID is not available. Please try again.");
+      return;
+    }
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      try {
+        await axios.delete(`http://localhost:8000/task/delete/${board.id}/t/${taskId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        setBoard({
+          ...board,
+          tasks: board.tasks.filter(task => task.id !== taskId)
+        });
+
+        if (selectedTask && selectedTask.id === taskId) {
+          setIsUpdateTaskOpen(false);
+          setSelectedTask(null);
+        }
+      } catch (err) {
+        console.error("Error deleting task:", err);
+        alert("Failed to delete task. Please try again.");
+      }
+    }
+  };
+
+  // Open the update modal for a task
+  const openUpdateModal = (task) => {
+    setSelectedTask(task);
+    setNewTaskName(task.name);
+    setNewTaskDescription(task.description || "");
+    setNewTaskPriority(task.priority);
+    setIsUpdateTaskOpen(true);
+  };
+
+  const getPriorityHeaderColor = (priority) => {
+    switch (priority) {
+      case "high":
+        return "bg-red-500 text-white";
+      case "medium":
+        return "bg-yellow-500 text-white";
+      case "low":
+        return "bg-green-500 text-white";
+      default:
+        return "bg-gray-500 text-white";
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
+      </>
+    );
+  }
 
-        {/* Lists and Tasks */}
-        <div className="flex space-x-6 overflow-x-auto pb-4">
-          {board.lists.map((list, listIndex) => (
-            <div
-              key={list.id}
-              className={`bg-gray-50 p-4 rounded-2xl shadow-md w-80 flex-shrink-0 transition-all duration-500 ${
-                animateContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-              }`}
-              style={{ transitionDelay: `${listIndex * 100}ms` }}
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <p>{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">{list.name}</h3>
-              <div className="space-y-3">
-                {list.tasks.length === 0 ? (
-                  <p className="text-gray-600 text-sm">No tasks yet.</p>
-                ) : (
-                  list.tasks.map((task, taskIndex) => (
-                    <div
-                      key={task.id}
-                      className={`bg-white p-3 rounded-lg shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 animate-fade-in`}
-                      style={{ animationDelay: `${(listIndex * 100 + taskIndex * 50)}ms` }}
-                    >
-                      <p className="text-gray-700">{task.name}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Create Task Modal */}
-      {isCreateTaskOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-300 scale-95 animate-scale-in">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6 animate-fade-in">
-              Create New Task
-            </h3>
-            <form onSubmit={handleCreateTask}>
-              <div className="relative mb-6">
-                <input
-                  type="text"
-                  value={newTaskName}
-                  onChange={(e) => setNewTaskName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-gray-100 border-2 border-gray-200 focus:border-blue-500 focus:bg-white focus:outline-none transition-all duration-300 peer"
-                  placeholder=" "
-                  required
-                  autoFocus
-                />
-                <label className="absolute left-4 top-3 text-gray-500 transition-all duration-300 transform origin-left peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-6 peer-focus:text-sm peer-focus:text-blue-500 peer-valid:-top-6 peer-valid:text-sm peer-valid:text-blue-500">
-                  Task Name
-                </label>
-              </div>
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateTaskOpen(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-300 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="relative bg-blue-600 text-white px-6 py-2 rounded-lg overflow-hidden group"
-                >
-                  <span className="relative z-10">Create</span>
-                  <span className="absolute inset-0 bg-blue-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
-                </button>
-              </div>
-            </form>
+              Retry
+            </button>
           </div>
         </div>
-      )}
-    </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-gray-50 pt-16">
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-1">
+                {board.name}
+              </h2>
+              {board.workspace && (
+                <p className="text-sm text-gray-500">
+                  Workspace: {board.workspace.name}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setIsCreateTaskOpen(true)}
+              disabled={loading || !board.id}
+              className={`px-6 py-2 rounded-md font-medium transition-colors duration-200 ${
+                loading || !board.id ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+            >
+              + New Task
+            </button>
+          </div>
+
+          {/* Priority-based Task Groups */}
+          <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            {Object.entries(groupedTasks).map(([priority, tasks], priorityIndex) => (
+              <div
+                key={priority}
+                className={`bg-white p-4 rounded-lg shadow-sm w-72 flex-shrink-0 transition-all duration-500 ${
+                  animateContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+                }`}
+                style={{ transitionDelay: `${priorityIndex * 100}ms` }}
+              >
+                <div className={`flex justify-between items-center mb-4 p-2 rounded-lg ${getPriorityHeaderColor(priority)}`}>
+                  <h3 className="text-lg font-semibold capitalize">{priority} Priority</h3>
+                  <span className="text-sm">{tasks.length} tasks</span>
+                </div>
+                <div className="space-y-3">
+                  {tasks.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-4">No tasks with {priority} priority</p>
+                  ) : (
+                    tasks.map((task, taskIndex) => (
+                      <div
+                        key={task.id}
+                        onClick={() => openUpdateModal(task)}
+                        className={`bg-gray-50 p-3 rounded-md border border-gray-200 hover:shadow-md transition-all duration-300 cursor-pointer ${
+                          animateContent ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                        }`}
+                        style={{ transitionDelay: `${priorityIndex * 100 + taskIndex * 50}ms` }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="text-gray-700 font-medium">{task.name}</p>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">{task.description}</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Updated {new Date(task.updated_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Create Task Modal */}
+        {isCreateTaskOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Create New Task</h3>
+              <form onSubmit={handleCreateTask}>
+                <div className="mb-4">
+                  <label htmlFor="taskName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Task Name
+                  </label>
+                  <input
+                    type="text"
+                    id="taskName"
+                    value={newTaskName}
+                    onChange={(e) => setNewTaskName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="taskDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="taskDescription"
+                    value={newTaskDescription}
+                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                  ></textarea>
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="taskPriority" className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    id="taskPriority"
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateTaskOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                  >
+                    Create
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Update Task Modal */}
+        {isUpdateTaskOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Update Task</h3>
+              <form onSubmit={handleUpdateTask}>
+                <div className="mb-4">
+                  <label htmlFor="updateTaskName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Task Name
+                  </label>
+                  <input
+                    type="text"
+                    id="updateTaskName"
+                    value={newTaskName}
+                    onChange={(e) => setNewTaskName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="updateTaskDescription" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="updateTaskDescription"
+                    value={newTaskDescription}
+                    onChange={(e) => setNewTaskDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows="3"
+                  ></textarea>
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="updateTaskPriority" className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    id="updateTaskPriority"
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="flex justify-between items-center mt-6">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTask(selectedTask.id)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsUpdateTaskOpen(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      Update
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

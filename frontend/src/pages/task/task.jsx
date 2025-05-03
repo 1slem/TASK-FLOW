@@ -14,7 +14,7 @@ const TaskApp = () => {
 
   // Fetch tasks from Django API
   useEffect(() => {
-    axios.get('http://localhost:8000/api/tasks/')
+    axios.get('http://localhost:8000/tasks/')
       .then(response => setTasks(response.data))
       .catch(error => console.error('Error fetching tasks:', error));
   }, []);
