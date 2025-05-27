@@ -1,0 +1,330 @@
+/* TaskFlow Admin Custom Styles */
+
+/* Variables */
+:root {
+    --primary: #2c3e50;
+    --secondary: #3498db;
+    --accent: #e74c3c;
+    --success: #2ecc71;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --primary-fg: #fff;
+    --body-fg: #333;
+    --body-bg: #f8f9fa;
+    --header-color: #fff;
+    --breadcrumbs-fg: #e0e0e0;
+    --link-fg: #3498db;
+    --link-hover-color: #2980b9;
+    --link-selected-fg: #2980b9;
+}
+
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--body-fg);
+    background-color: var(--body-bg);
+    line-height: 1.5;
+}
+
+/* Header */
+#header {
+    background: var(--primary);
+    color: var(--header-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px 40px;
+}
+
+#header a:link, #header a:visited {
+    color: var(--header-color);
+}
+
+#branding h1 {
+    font-weight: 600;
+}
+
+#user-tools {
+    font-size: 13px;
+}
+
+#user-tools a {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 2px;
+}
+
+#user-tools a:hover {
+    border-bottom-color: var(--header-color);
+    text-decoration: none;
+}
+
+/* Breadcrumbs */
+div.breadcrumbs {
+    background: #34495e;
+    padding: 12px 40px;
+    border: none;
+    font-size: 14px;
+    color: var(--breadcrumbs-fg);
+}
+
+div.breadcrumbs a {
+    color: var(--breadcrumbs-fg);
+}
+
+div.breadcrumbs a:hover {
+    color: white;
+}
+
+/* Module Headers */
+.module h2, .module caption, .inline-group h2 {
+    background: var(--secondary);
+    color: var(--primary-fg);
+    font-weight: 600;
+    border-radius: 4px 4px 0 0;
+    padding: 12px 15px;
+}
+
+/* Dashboard */
+.dashboard .module table th {
+    width: 100%;
+}
+
+.dashboard .module table td {
+    white-space: nowrap;
+}
+
+.dashboard .module table td a {
+    display: block;
+    padding: 8px;
+    transition: background 0.3s;
+}
+
+.dashboard .module table td a:hover {
+    background: #f5f5f5;
+}
+
+/* Buttons */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background: var(--secondary);
+    color: var(--primary-fg);
+    border-radius: 4px;
+    padding: 10px 15px;
+    border: none;
+    font-weight: 500;
+    transition: background 0.3s;
+}
+
+.button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover {
+    background: var(--link-hover-color);
+}
+
+.button.default, input[type=submit].default, .submit-row input.default {
+    background: var(--accent);
+}
+
+.button.default:hover, input[type=submit].default:hover, .submit-row input.default:hover {
+    background: #c0392b;
+}
+
+/* Links */
+a:link, a:visited {
+    color: var(--link-fg);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+a:hover {
+    color: var(--link-hover-color);
+}
+
+/* Form Elements */
+.form-row {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.form-row:last-child {
+    border-bottom: none;
+}
+
+input[type=text], input[type=password], input[type=email], input[type=url], input[type=number], input[type=tel], textarea, select, .vTextField {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    transition: border-color 0.3s;
+}
+
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=url]:focus, input[type=number]:focus, input[type=tel]:focus, textarea:focus, select:focus, .vTextField:focus {
+    border-color: var(--secondary);
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+/* Messages */
+.messagelist {
+    padding: 0;
+    margin: 0 0 15px 0;
+}
+
+.messagelist li {
+    padding: 12px 15px;
+    margin: 0 0 10px 0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.messagelist li.success {
+    background: #dff0d8;
+    color: #3c763d;
+}
+
+.messagelist li.warning {
+    background: #fcf8e3;
+    color: #8a6d3b;
+}
+
+.messagelist li.error {
+    background: #f2dede;
+    color: #a94442;
+}
+
+/* Object Tools */
+.object-tools {
+    margin-top: 15px;
+}
+
+.object-tools a {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 12px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 767px) {
+    #header {
+        padding: 15px 20px;
+    }
+    
+    #user-tools {
+        display: block;
+        margin-top: 10px;
+    }
+    
+    div.breadcrumbs {
+        padding: 10px 20px;
+    }
+}
+
+/* Custom Dashboard Elements */
+.dashboard-stats {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px 20px;
+}
+
+.stat-box {
+    flex: 1 0 200px;
+    margin: 10px;
+    padding: 20px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-box h3 {
+    margin: 0 0 10px;
+    font-size: 16px;
+    color: #7f8c8d;
+}
+
+.stat-box .count {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.stat-box.workspaces {
+    border-top: 3px solid var(--secondary);
+}
+
+.stat-box.boards {
+    border-top: 3px solid var(--success);
+}
+
+.stat-box.tasks {
+    border-top: 3px solid var(--accent);
+}
+
+.stat-box.users {
+    border-top: 3px solid var(--warning);
+}
+
+/* App List Styling */
+.app-list {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.app-item {
+    flex: 1 0 300px;
+    margin: 10px;
+    background: white;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.app-item h2 {
+    margin: 0;
+    padding: 15px;
+    background: var(--secondary);
+    color: white;
+    font-size: 16px;
+}
+
+.model-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.model-list li {
+    border-bottom: 1px solid #eee;
+}
+
+.model-list li:last-child {
+    border-bottom: none;
+}
+
+.model-list a {
+    display: block;
+    padding: 12px 15px;
+    color: var(--dark);
+    transition: background 0.2s;
+}
+
+.model-list a:hover {
+    background: var(--light);
+}
+
+.model-actions {
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+.model-actions a {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+}
+
+.model-actions .add-link {
+    color: var(--success);
+}
+
+.model-actions .change-link {
+    color: var(--secondary);
+}

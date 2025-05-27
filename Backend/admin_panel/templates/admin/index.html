@@ -1,0 +1,232 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .dashboard-header {
+        background: #f8f9fa;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .dashboard-header h1 {
+        margin: 0;
+        font-size: 24px;
+        color: #2c3e50;
+    }
+    
+    .dashboard-header p {
+        margin: 10px 0 0;
+        color: #7f8c8d;
+    }
+    
+    .dashboard-stats {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -10px 20px;
+    }
+    
+    .stat-box {
+        flex: 1 0 200px;
+        margin: 10px;
+        padding: 20px;
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    .stat-box h3 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        color: #7f8c8d;
+    }
+    
+    .stat-box .count {
+        font-size: 32px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    
+    .stat-box.workspaces {
+        border-top: 3px solid #3498db;
+    }
+    
+    .stat-box.boards {
+        border-top: 3px solid #2ecc71;
+    }
+    
+    .stat-box.tasks {
+        border-top: 3px solid #e74c3c;
+    }
+    
+    .stat-box.users {
+        border-top: 3px solid #f39c12;
+    }
+    
+    .app-list {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -10px;
+    }
+    
+    .app-item {
+        flex: 1 0 300px;
+        margin: 10px;
+        background: white;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .app-item h2 {
+        margin: 0;
+        padding: 15px;
+        background: #3498db;
+        color: white;
+        font-size: 16px;
+    }
+    
+    .model-list {
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+    
+    .model-list li {
+        border-bottom: 1px solid #eee;
+    }
+    
+    .model-list li:last-child {
+        border-bottom: none;
+    }
+    
+    .model-list a {
+        display: block;
+        padding: 12px 15px;
+        color: #2c3e50;
+        transition: background 0.2s;
+    }
+    
+    .model-list a:hover {
+        background: #f8f9fa;
+    }
+    
+    .model-list .add-link {
+        color: #27ae60;
+    }
+    
+    .model-list .change-link {
+        color: #3498db;
+    }
+    
+    @media (max-width: 767px) {
+        .stat-box {
+            flex: 1 0 100%;
+        }
+        
+        .app-item {
+            flex: 1 0 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="dashboard-header">
+        <h1>{% trans "TaskFlow Dashboard" %}</h1>
+        <p>{% trans "Welcome to the TaskFlow administration panel. Here you can manage all aspects of your TaskFlow system." %}</p>
+    </div>
+
+    <div class="dashboard-stats">
+        <div class="stat-box workspaces">
+            <h3>{% trans "Workspaces" %}</h3>
+            <div class="count">{{ workspace_count }}</div>
+        </div>
+        <div class="stat-box boards">
+            <h3>{% trans "Boards" %}</h3>
+            <div class="count">{{ board_count }}</div>
+        </div>
+        <div class="stat-box tasks">
+            <h3>{% trans "Tasks" %}</h3>
+            <div class="count">{{ task_count }}</div>
+        </div>
+        <div class="stat-box users">
+            <h3>{% trans "Users" %}</h3>
+            <div class="count">{{ user_count }}</div>
+        </div>
+    </div>
+
+    <div class="app-list">
+    {% for app in app_list %}
+        <div class="app-item">
+            <h2>{{ app.name }}</h2>
+            <ul class="model-list">
+            {% for model in app.models %}
+                <li>
+                    {% if model.admin_url %}
+                        <a href="{{ model.admin_url }}">{{ model.name }}</a>
+                    {% else %}
+                        {{ model.name }}
+                    {% endif %}
+                    
+                    <div class="model-actions">
+                        {% if model.add_url %}
+                            <a href="{{ model.add_url }}" class="add-link">{% trans 'Add' %}</a>
+                        {% endif %}
+                        {% if model.admin_url and model.perms.change %}
+                            <a href="{{ model.admin_url }}" class="change-link">{% trans 'Change' %}</a>
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% trans 'Recent actions' %}</h2>
+        <h3>{% trans 'My actions' %}</h3>
+        {% load log %}
+        {% get_admin_log 10 as admin_log for_user user %}
+        {% if not admin_log %}
+            <p>{% trans 'None available' %}</p>
+        {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+                <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                    {% if entry.is_deletion or not entry.get_admin_url %}
+                        {{ entry.object_repr }}
+                    {% else %}
+                        <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                    {% endif %}
+                    <br>
+                    {% if entry.content_type %}
+                        <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                    {% else %}
+                        <span class="mini quiet">{% trans 'Unknown content' %}</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

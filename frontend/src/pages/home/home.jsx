@@ -15,7 +15,7 @@ const Home = () => {
           <h2 className="text-4xl sm:text-5xl font-extrabold mb-6 animate-fade-in">
             Master Your Workflow with Task Flow
           </h2>
-          <p className="text-lg sm:text-xl mb-8 max-w-3xl mx-auto opacity-90 animate-slide-up">
+          <p className="text-lg sm:text-xl mb-8 max-w-3xl mx-auto opacity-90 ">
             Plan, track, and collaborate on tasks effortlessly with our modern, Trello-inspired platform designed for teams and individuals.
           </p>
           <Link

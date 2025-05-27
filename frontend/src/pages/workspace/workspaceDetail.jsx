@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link} from 'react-router-dom';
 import Navbar from '../../components/Navbar';
-import { FaChevronLeft, FaChevronRight, FaEllipsisV, FaTrash, FaEdit } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight, FaTrash, FaEdit } from 'react-icons/fa';
 
 const WorkspaceDetail = () => {
   const { id } = useParams();
@@ -23,12 +23,12 @@ const WorkspaceDetail = () => {
   const [addingMember, setAddingMember] = useState(false);
   const [memberError, setMemberError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeDropdown, setActiveDropdown] = useState(null);
+
   const [isOwner, setIsOwner] = useState(false);
-  
+
   const fetchWorkspaceDetails = useCallback(() => {
     setLoading(true);
-    
+
     // Fetch workspace details
     fetch(`http://localhost:8000/workspace/${id}`, {
       method: 'GET',
@@ -76,12 +76,12 @@ const WorkspaceDetail = () => {
         .then(membersData => {
           // Check if current user is owner
           const currentUserId = parseInt(localStorage.getItem('userId'));
-          const currentUserRole = membersData.find(member => 
+          const currentUserRole = membersData.find(member =>
             member.id === currentUserId
           )?.groupRole?.role;
-          
+
           setIsOwner(currentUserRole === 'OWNER');
-          
+
           setWorkspace({
             ...workspaceData,
             boards: boardsData || [],
@@ -159,7 +159,7 @@ const WorkspaceDetail = () => {
       .then(updatedBoard => {
         setWorkspace(prev => ({
           ...prev,
-          boards: prev.boards.map(board => 
+          boards: prev.boards.map(board =>
             board.id === updatedBoard.id ? updatedBoard : board
           )
         }));
@@ -200,10 +200,10 @@ const WorkspaceDetail = () => {
   const handleAddMember = (e) => {
     e.preventDefault();
     if (!newMemberEmail.trim()) return;
-    
+
     setAddingMember(true);
     setMemberError('');
-    
+
     fetch(`http://localhost:8000/workspace/new-member/${id}`, {
       method: 'PUT',
       headers: {
@@ -239,7 +239,7 @@ const WorkspaceDetail = () => {
 
   const handleDeleteMember = (memberId) => {
     if (!window.confirm('Are you sure you want to remove this member?')) return;
-    
+
     fetch(`http://localhost:8000/workspace/remove-member/${id}`, {
       method: 'DELETE',
       headers: {
@@ -258,16 +258,11 @@ const WorkspaceDetail = () => {
         ...prev,
         members: prev.members.filter(member => member.id !== memberId)
       }));
-      setActiveDropdown(null);
     })
     .catch(error => {
       console.error('Error removing member:', error);
       alert('Failed to remove member');
     });
-  };
-
-  const toggleDropdown = (memberId) => {
-    setActiveDropdown(activeDropdown === memberId ? null : memberId);
   };
 
   const toggleSidebar = () => {
@@ -289,7 +284,7 @@ const WorkspaceDetail = () => {
           <aside className={`bg-white shadow-md p-6 fixed h-full left-0 top-16 overflow-y-auto ${sidebarOpen ? 'w-90' : 'w-0'} transition-all duration-300 ease-in-out `}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-800">Workspace Members</h3>
-              <button 
+              <button
                 onClick={toggleSidebar}
                 className="p-1 rounded-full hover:bg-gray-200 transition-colors"
                 title="Collapse sidebar"
@@ -297,7 +292,7 @@ const WorkspaceDetail = () => {
                 <FaChevronLeft className="text-gray-600" />
               </button>
             </div>
-            
+
             <form onSubmit={handleAddMember} className="mb-6">
               <div className="flex flex-col space-y-2">
                 <input
@@ -320,7 +315,7 @@ const WorkspaceDetail = () => {
                 </button>
               </div>
             </form>
-            
+
             <h4 className="font-semibold text-gray-700 mb-2">Members</h4>
             {loading ? (
               <div className="flex justify-center items-center h-20">
@@ -337,12 +332,12 @@ const WorkspaceDetail = () => {
                   >
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-500 font-semibold">
-                        {member.first_name ? member.first_name.charAt(0).toUpperCase() : 
+                        {member.first_name ? member.first_name.charAt(0).toUpperCase() :
                          member.username ? member.username.charAt(0).toUpperCase() : '?'}
                       </div>
                       <div className="flex flex-col">
                         <span className="font-medium">
-                          {member.first_name && member.last_name 
+                          {member.first_name && member.last_name
                             ? `${member.first_name} ${member.last_name}`
                             : member.username || member.email || 'Unknown User'}
                         </span>
@@ -352,32 +347,21 @@ const WorkspaceDetail = () => {
                     <div className="flex items-center">
                       {member.groupRole && (
                         <span className={`text-xs px-2 py-1 rounded mr-2 ${
-                          member.groupRole.role === 'OWNER' ? 'bg-purple-100 text-purple-800' : 
-                          member.groupRole.role === 'ADMIN' ? 'bg-blue-100 text-blue-800' : 
+                          member.groupRole.role === 'OWNER' ? 'bg-purple-100 text-purple-800' :
+                          member.groupRole.role === 'ADMIN' ? 'bg-blue-100 text-blue-800' :
                           'bg-green-100 text-green-800'
                         }`}>
                           {member.groupRole.role}
                         </span>
                       )}
                       {isOwner && member.groupRole?.role !== 'OWNER' && (
-                        <div className="relative">
-                          <button 
-                            onClick={() => toggleDropdown(member.id)}
-                            className="p-1 rounded-full hover:bg-gray-200 transition-colors"
-                          >
-                            <FaEllipsisV className="text-gray-500" />
-                          </button>
-                          {activeDropdown === member.id && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1">
-                              <button
-                                onClick={() => handleDeleteMember(member.id)}
-                                className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
-                              >
-                                <FaTrash className="mr-2" /> Delete
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => handleDeleteMember(member.id)}
+                          className="ml-2 p-1.5 rounded-full hover:bg-red-100 transition-colors group"
+                          title="Remove member"
+                        >
+                          <FaTrash className="text-gray-400 group-hover:text-red-500 transition-colors" size={14} />
+                        </button>
                       )}
                     </div>
                   </li>
@@ -389,7 +373,7 @@ const WorkspaceDetail = () => {
 
         {/* Sidebar toggle button when collapsed */}
         {!sidebarOpen && (
-          <button 
+          <button
             onClick={toggleSidebar}
             className="fixed left-0 top-1/2 transform -translate-y-1/2 bg-white p-2 rounded-r-lg shadow-md hover:bg-gray-100 transition-colors z-10"
             title="Expand sidebar"
@@ -428,14 +412,14 @@ const WorkspaceDetail = () => {
                     }`}
                   >
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
+                      <button
                         onClick={() => openEditBoardModal(board)}
                         className="p-1 text-gray-500 hover:text-blue-500"
                         title="Edit board"
                       >
                         <FaEdit />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteBoard(board.id)}
                         className="p-1 text-gray-500 hover:text-red-500 ml-1"
                         title="Delete board"

@@ -25,12 +25,11 @@ def test_view(request):
     return HttpResponse("Test route works!")
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin.site.urls),  # Keep the default admin site
     path('user/', include('user.urls')),
     path('test/', test_view, name='test'),  # Add test route
     path('home/', HomeView.as_view(), name='home'),
     path("workspace/", include("workspace.urls")),
     path("board/", include("board.urls")),
     path("task/", include("task.urls")),
-    
 ]

@@ -14,11 +14,14 @@ const Board = () => {
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("medium");
+  const [newTaskStatus, setNewTaskStatus] = useState("not-done");
+  const [newTaskAssignedTo, setNewTaskAssignedTo] = useState("");
   const [selectedTask, setSelectedTask] = useState(null);
   const [animateContent, setAnimateContent] = useState(false);
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
 
   // Get the currently selected board
-  const selectedBoard = boards.find(board => board.id === selectedBoardId) || 
+  const selectedBoard = boards.find(board => board.id === selectedBoardId) ||
                        (boards.length > 0 ? boards[0] : { id: null, name: "", tasks: [] });
 
   // Group tasks by priority for the SELECTED board only
@@ -30,6 +33,19 @@ const Board = () => {
 
   // Fetch boards and their tasks for the workspace
   useEffect(() => {
+    const fetchWorkspaceMembers = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8000/workspace/members/${workspaceId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        setWorkspaceMembers(response.data);
+      } catch (err) {
+        console.error("Error fetching workspace members:", err);
+      }
+    };
+
     const fetchBoardsData = async () => {
       setLoading(true);
       try {
@@ -39,16 +55,19 @@ const Board = () => {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         // Process the response to ensure each board has its own tasks
         const boardsData = response.data;
         setBoards(boardsData);
-        
+
         // Set the first board as selected by default
         if (boardsData.length > 0 && !selectedBoardId) {
           setSelectedBoardId(boardsData[0].id);
         }
-        
+
+        // Fetch workspace members
+        await fetchWorkspaceMembers();
+
         setLoading(false);
         setTimeout(() => setAnimateContent(true), 100);
       } catch (err) {
@@ -59,7 +78,7 @@ const Board = () => {
     };
 
     fetchBoardsData();
-  }, [workspaceId]);
+  }, [workspaceId, selectedBoardId]);
 
   // Create a new task
   const handleCreateTask = async (e) => {
@@ -68,35 +87,39 @@ const Board = () => {
       alert("No board selected. Please select a board first.");
       return;
     }
-    
+
     if (newTaskName.trim()) {
       try {
         const response = await axios.post(`http://localhost:8000/task/create/${selectedBoardId}`, {
           name: newTaskName,
           description: newTaskDescription,
-          priority: newTaskPriority
+          priority: newTaskPriority,
+          status: newTaskStatus,
+          assigned_to_id: newTaskAssignedTo || null
         }, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         // Add the new task to the correct board only
         const newTask = response.data.task;
-        
-        setBoards(prevBoards => 
-          prevBoards.map(board => 
-            board.id === selectedBoardId 
+
+        setBoards(prevBoards =>
+          prevBoards.map(board =>
+            board.id === selectedBoardId
               ? { ...board, tasks: [...board.tasks, newTask] }
               : board
           )
         );
-        
+
         // Reset form
         setNewTaskName("");
         setNewTaskDescription("");
         setNewTaskPriority("medium");
+        setNewTaskStatus("not-done");
+        setNewTaskAssignedTo("");
         setIsCreateTaskOpen(false);
       } catch (err) {
         console.error("Error creating task:", err);
@@ -112,15 +135,17 @@ const Board = () => {
       alert("No board or task selected.");
       return;
     }
-    
+
     if (newTaskName.trim()) {
       try {
         const response = await axios.put(
-          `http://localhost:8000/task/update/${selectedBoardId}/t/${selectedTask.id}`, 
+          `http://localhost:8000/task/update/${selectedBoardId}/t/${selectedTask.id}`,
           {
             name: newTaskName,
             description: newTaskDescription,
-            priority: newTaskPriority
+            priority: newTaskPriority,
+            status: newTaskStatus,
+            assigned_to_id: newTaskAssignedTo || null
           },
           {
             headers: {
@@ -129,27 +154,29 @@ const Board = () => {
             }
           }
         );
-        
+
         // Update the task in the correct board only
         const updatedTask = response.data;
-        
-        setBoards(prevBoards => 
-          prevBoards.map(board => 
-            board.id === selectedBoardId 
-              ? { 
-                  ...board, 
-                  tasks: board.tasks.map(task => 
+
+        setBoards(prevBoards =>
+          prevBoards.map(board =>
+            board.id === selectedBoardId
+              ? {
+                  ...board,
+                  tasks: board.tasks.map(task =>
                     task.id === selectedTask.id ? updatedTask : task
-                  ) 
+                  )
                 }
               : board
           )
         );
-        
+
         // Reset form
         setNewTaskName("");
         setNewTaskDescription("");
         setNewTaskPriority("medium");
+        setNewTaskStatus("not-done");
+        setNewTaskAssignedTo("");
         setIsUpdateTaskOpen(false);
         setSelectedTask(null);
       } catch (err) {
@@ -165,7 +192,7 @@ const Board = () => {
       alert("No board selected.");
       return;
     }
-    
+
     if (window.confirm("Are you sure you want to delete this task?")) {
       try {
         await axios.delete(`http://localhost:8000/task/delete/${selectedBoardId}/t/${taskId}`, {
@@ -173,16 +200,16 @@ const Board = () => {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         // Remove the task from the correct board only
-        setBoards(prevBoards => 
-          prevBoards.map(board => 
-            board.id === selectedBoardId 
+        setBoards(prevBoards =>
+          prevBoards.map(board =>
+            board.id === selectedBoardId
               ? { ...board, tasks: board.tasks.filter(task => task.id !== taskId) }
               : board
           )
         );
-        
+
         // Close modal if the deleted task was selected
         if (selectedTask && selectedTask.id === taskId) {
           setIsUpdateTaskOpen(false);
@@ -192,6 +219,48 @@ const Board = () => {
         console.error("Error deleting task:", err);
         alert("Failed to delete task. Please try again.");
       }
+    }
+  };
+
+  // Handle task status update
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    if (!selectedBoardId) {
+      alert("No board selected.");
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `http://localhost:8000/task/status/${selectedBoardId}/t/${taskId}`,
+        {
+          status: newStatus
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+
+      // Update the task in the correct board only
+      const updatedTask = response.data;
+
+      setBoards(prevBoards =>
+        prevBoards.map(board =>
+          board.id === selectedBoardId
+            ? {
+                ...board,
+                tasks: board.tasks.map(task =>
+                  task.id === taskId ? updatedTask : task
+                )
+              }
+            : board
+        )
+      );
+    } catch (err) {
+      console.error("Error updating task status:", err);
+      alert("Failed to update task status. Please try again.");
     }
   };
 
@@ -206,6 +275,8 @@ const Board = () => {
     setNewTaskName(task.name);
     setNewTaskDescription(task.description || "");
     setNewTaskPriority(task.priority);
+    setNewTaskStatus(task.status || "not-done");
+    setNewTaskAssignedTo(task.assigned_to ? task.assigned_to.id : "");
     setIsUpdateTaskOpen(true);
   };
 
@@ -220,6 +291,40 @@ const Board = () => {
       default:
         return "bg-gray-500 text-white";
     }
+  };
+
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case "done":
+        return "bg-green-100 text-green-800";
+      case "semi-done":
+        return "bg-yellow-100 text-yellow-800";
+      case "not-done":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "done":
+        return "Done";
+      case "semi-done":
+        return "Semi-done";
+      case "not-done":
+        return "Not done";
+      default:
+        return "Unknown";
+    }
+  };
+
+  const getUserDisplayName = (user) => {
+    if (!user) return null;
+    if (user.first_name && user.last_name) {
+      return `${user.first_name} ${user.last_name}`;
+    }
+    return user.username;
   };
 
   if (loading) {
@@ -240,8 +345,8 @@ const Board = () => {
         <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             <p>{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => window.location.reload()}
               className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
               Retry
@@ -332,11 +437,55 @@ const Board = () => {
                       >
                         <div className="flex justify-between items-start">
                           <p className="text-gray-700 font-medium">{task.name}</p>
+                          <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeColor(task.status || "not-done")}`}>
+                            {getStatusLabel(task.status || "not-done")}
+                          </span>
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{task.description}</p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          Updated {new Date(task.updated_at).toLocaleDateString()}
-                        </p>
+                        {task.assigned_to && (
+                          <div className="mt-2">
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                              👤 {getUserDisplayName(task.assigned_to)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center mt-2">
+                          <p className="text-xs text-gray-400">
+                            Updated {new Date(task.updated_at).toLocaleDateString()}
+                          </p>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateTaskStatus(task.id, "not-done");
+                              }}
+                              className={`text-xs px-2 py-1 rounded-full ${task.status === "not-done" ? "bg-red-200 text-red-800" : "bg-gray-200 text-gray-600"} hover:bg-red-200 hover:text-red-800`}
+                              title="Mark as Not Done"
+                            >
+                              ✕
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateTaskStatus(task.id, "semi-done");
+                              }}
+                              className={`text-xs px-2 py-1 rounded-full ${task.status === "semi-done" ? "bg-yellow-200 text-yellow-800" : "bg-gray-200 text-gray-600"} hover:bg-yellow-200 hover:text-yellow-800`}
+                              title="Mark as Semi-Done"
+                            >
+                              ⟳
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateTaskStatus(task.id, "done");
+                              }}
+                              className={`text-xs px-2 py-1 rounded-full ${task.status === "done" ? "bg-green-200 text-green-800" : "bg-gray-200 text-gray-600"} hover:bg-green-200 hover:text-green-800`}
+                              title="Mark as Done"
+                            >
+                              ✓
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))
                   )}
@@ -390,6 +539,41 @@ const Board = () => {
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="taskStatus" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="taskStatus"
+                    value={newTaskStatus}
+                    onChange={(e) => setNewTaskStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="not-done">Not Done</option>
+                    <option value="semi-done">Semi-Done</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="taskAssignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign To
+                  </label>
+                  <select
+                    id="taskAssignedTo"
+                    value={newTaskAssignedTo}
+                    onChange={(e) => setNewTaskAssignedTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Unassigned</option>
+                    {workspaceMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.first_name && member.last_name
+                          ? `${member.first_name} ${member.last_name}`
+                          : member.username}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex justify-end space-x-2">
@@ -456,6 +640,41 @@ const Board = () => {
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="updateTaskStatus" className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    id="updateTaskStatus"
+                    value={newTaskStatus}
+                    onChange={(e) => setNewTaskStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="not-done">Not Done</option>
+                    <option value="semi-done">Semi-Done</option>
+                    <option value="done">Done</option>
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label htmlFor="updateTaskAssignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign To
+                  </label>
+                  <select
+                    id="updateTaskAssignedTo"
+                    value={newTaskAssignedTo}
+                    onChange={(e) => setNewTaskAssignedTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Unassigned</option>
+                    {workspaceMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.first_name && member.last_name
+                          ? `${member.first_name} ${member.last_name}`
+                          : member.username}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex justify-between items-center mt-6">

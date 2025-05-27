@@ -1,0 +1,166 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('TaskFlow Admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'taskflow_admin:index' %}">
+        {{ site_header|default:_('TaskFlow Administration') }}
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --primary: #2c3e50;
+        --secondary: #3498db;
+        --accent: #e74c3c;
+        --primary-fg: #fff;
+        --body-fg: #333;
+        --body-bg: #f8f9fa;
+        --header-color: #fff;
+        --breadcrumbs-fg: #e0e0e0;
+        --link-fg: #3498db;
+        --link-hover-color: #2980b9;
+        --link-selected-fg: #2980b9;
+    }
+
+    /* Header */
+    #header {
+        background: var(--primary);
+        color: var(--header-color);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    #header a:link, #header a:visited {
+        color: var(--header-color);
+    }
+
+    /* Module headers */
+    .module h2, .module caption, .inline-group h2 {
+        background: var(--secondary);
+        color: var(--primary-fg);
+        font-weight: 600;
+        border-radius: 4px 4px 0 0;
+    }
+
+    /* Buttons */
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        background: var(--secondary);
+        color: var(--primary-fg);
+        border-radius: 4px;
+        transition: background 0.3s;
+    }
+
+    .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover {
+        background: var(--link-hover-color);
+    }
+
+    .button.default, input[type=submit].default, .submit-row input.default {
+        background: var(--accent);
+    }
+
+    .button.default:hover, input[type=submit].default:hover, .submit-row input.default:hover {
+        background: #c0392b;
+    }
+
+    /* Links */
+    a:link, a:visited {
+        color: var(--link-fg);
+        text-decoration: none;
+        transition: color 0.3s;
+    }
+
+    a:hover {
+        color: var(--link-hover-color);
+    }
+
+    /* Dashboard */
+    .dashboard .module table th {
+        width: 100%;
+    }
+
+    .dashboard .module table td {
+        white-space: nowrap;
+    }
+
+    .dashboard .module table td a {
+        display: block;
+        padding: 8px;
+        transition: background 0.3s;
+    }
+
+    .dashboard .module table td a:hover {
+        background: #f5f5f5;
+    }
+
+    /* Form elements */
+    .form-row {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .form-row:last-child {
+        border-bottom: none;
+    }
+
+    input[type=text], input[type=password], input[type=email], input[type=url], input[type=number], input[type=tel], textarea, select, .vTextField {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 8px;
+        transition: border-color 0.3s;
+    }
+
+    input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, input[type=url]:focus, input[type=number]:focus, input[type=tel]:focus, textarea:focus, select:focus, .vTextField:focus {
+        border-color: var(--secondary);
+        box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+    }
+
+    /* Messages */
+    .messagelist {
+        padding: 0;
+    }
+
+    .messagelist li {
+        padding: 12px 15px;
+        margin: 0 0 10px 0;
+        border-radius: 4px;
+    }
+
+    .messagelist li.success {
+        background: #dff0d8;
+        color: #3c763d;
+    }
+
+    .messagelist li.warning {
+        background: #fcf8e3;
+        color: #8a6d3b;
+    }
+
+    .messagelist li.error {
+        background: #f2dede;
+        color: #a94442;
+    }
+
+    /* Breadcrumbs */
+    div.breadcrumbs {
+        background: #34495e;
+        padding: 12px 15px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 767px) {
+        #header {
+            padding: 15px 20px;
+        }
+        
+        #user-tools {
+            display: block;
+            margin-top: 10px;
+        }
+    }
+</style>
+{% endblock %}
