@@ -33,9 +33,24 @@ def get_workspaces(request):
 def get_workspace_by_id(request, workspace_id):
     try:
         workspace = Workspace.objects.get(id=workspace_id)
-
     except Workspace.DoesNotExist:
         return JsonResponse({"error": "Workspace not found"}, status=404)
+
+    # Check if the authenticated user is a member of this workspace
+    payload = request.user
+    user_id = payload.get("id")
+
+    if not user_id:
+        return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+    try:
+        user = User.objects.get(id=user_id)
+        # Check if user is a member of this workspace
+        user_workspace = UserWorkspace.objects.get(workspace=workspace, user=user)
+    except User.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+    except UserWorkspace.DoesNotExist:
+        return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
 
     return JsonResponse(
         {
@@ -57,6 +72,22 @@ def get_workspace_members(request, workspace_id):
             workspace = Workspace.objects.get(id=workspace_id)
         except Workspace.DoesNotExist:
             return JsonResponse({"error": "Workspace not found"}, status=404)
+
+        # Check if the authenticated user is a member of this workspace
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of this workspace
+            user_workspace = UserWorkspace.objects.get(workspace=workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
 
         user_workspaces = UserWorkspace.objects.filter(
             workspace=workspace
@@ -340,13 +371,13 @@ def get_user_workspaces(request):
         # Get the user from the request (assuming middleware adds user to request)
         payload = request.user
         user_id = payload.get("id")
-        
+
         if not user_id:
             return JsonResponse({"error": "User ID not found in token"}, status=400)
-        
+
         # Get user's workspaces through UserWorkspace
         user_workspaces = UserWorkspace.objects.filter(user_id=user_id).select_related('workspace')
-        
+
         # Extract workspace data
         data = [
             {
@@ -358,7 +389,7 @@ def get_user_workspaces(request):
             }
             for user_workspace in user_workspaces
         ]
-        
+
         return JsonResponse(data, safe=False)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)

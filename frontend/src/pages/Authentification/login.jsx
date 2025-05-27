@@ -35,9 +35,12 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // Store the token in localStorage
+        // Store the token and user information in localStorage
         localStorage.setItem('token', data.token);
-        
+        localStorage.setItem('userId', data.user.id);
+        localStorage.setItem('userEmail', data.user.email);
+        localStorage.setItem('username', data.user.username);
+
         // Redirect to home page or dashboard
         navigate('/home');
       } else {
@@ -69,8 +72,8 @@ function Login() {
               placeholder=" "
               required
             />
-            <label className="absolute left-4 top-3 text-gray-500 transition-all duration-300 ease-in-out transform 
-            origin-left peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-6 
+            <label className="absolute left-4 top-3 text-gray-500 transition-all duration-300 ease-in-out transform
+            origin-left peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-6
             peer-focus:text-sm peer-focus:text-blue-500 peer-valid:-top-6 peer-valid:text-sm peer-valid:text-blue-500">
               Username
             </label>

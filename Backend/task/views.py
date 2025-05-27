@@ -2,6 +2,7 @@ import json
 from django.http import JsonResponse
 from .models import Task
 from board.models import Board
+from workspace.models import UserWorkspace
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 import jwt
@@ -29,8 +30,9 @@ def create_task(request, board_id):
         if not name:
             return JsonResponse({"error": "Task name is required"}, status=400)
 
+        # Description is optional, set to empty string if not provided
         if not description:
-            return JsonResponse({"error": "Task description is required"}, status=400)
+            description = ""
 
         if not priority:
             return JsonResponse({"error": "Task priority is required"}, status=400)
@@ -44,6 +46,22 @@ def create_task(request, board_id):
             board_to_save = Board.objects.get(id=board_id)
         except Board.DoesNotExist:
             return JsonResponse({"error": "Board not found"}, status=404)
+
+        # Check if the authenticated user is a member of this workspace
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of this workspace
+            user_workspace = UserWorkspace.objects.get(workspace=board_to_save.workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
 
         # Validate status if provided
         if status and status not in ["not-done", "semi-done", "done"]:
@@ -128,8 +146,9 @@ def update_task(request, board_id, task_id):
         if not name:
             return JsonResponse({"error": "Task name is required"}, status=400)
 
+        # Description is optional, set to empty string if not provided
         if not description:
-            return JsonResponse({"error": "Task description is required"}, status=400)
+            description = ""
 
         if not priority:
             return JsonResponse({"error": "Task priority is required"}, status=400)
@@ -142,6 +161,22 @@ def update_task(request, board_id, task_id):
             board_to_save = Board.objects.get(id=board_id)
         except Board.DoesNotExist:
             return JsonResponse({"error": "Board not found"}, status=404)
+
+        # Check if the authenticated user is a member of this workspace
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of this workspace
+            user_workspace = UserWorkspace.objects.get(workspace=board_to_save.workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
 
         try:
             task = Task.objects.get(id=task_id, board=board_to_save)
@@ -221,6 +256,22 @@ def delete_task(request, board_id, task_id):
         except Board.DoesNotExist:
             return JsonResponse({"error": "Board not found"}, status=404)
 
+        # Check if the authenticated user is a member of this workspace
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of this workspace
+            user_workspace = UserWorkspace.objects.get(workspace=board_to_save.workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
+
         try:
             task = Task.objects.get(id=task_id, board=board_to_save)
         except Task.DoesNotExist:
@@ -266,6 +317,23 @@ def assign_task(request, task_id):
             new_board = Board.objects.get(id=new_board_id)
         except Board.DoesNotExist:
             return JsonResponse({"error": "New Board not found"}, status=404)
+
+        # Check if the authenticated user is a member of both workspaces
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of both workspaces
+            prev_user_workspace = UserWorkspace.objects.get(workspace=prev_board.workspace, user=user)
+            new_user_workspace = UserWorkspace.objects.get(workspace=new_board.workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access one or both workspaces"}, status=403)
 
         try:
             task = Task.objects.get(id=task_id, board=prev_board)
@@ -326,6 +394,22 @@ def update_task_status(request, board_id, task_id):
             board = Board.objects.get(id=board_id)
         except Board.DoesNotExist:
             return JsonResponse({"error": "Board not found"}, status=404)
+
+        # Check if the authenticated user is a member of this workspace
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of this workspace
+            user_workspace = UserWorkspace.objects.get(workspace=board.workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
 
         try:
             task = Task.objects.get(id=task_id, board=board)
@@ -389,6 +473,22 @@ def assign_user_to_task(request, board_id, task_id):
             board = Board.objects.get(id=board_id)
         except Board.DoesNotExist:
             return JsonResponse({"error": "Board not found"}, status=404)
+
+        # Check if the authenticated user is a member of this workspace
+        payload = request.user
+        user_id = payload.get("id")
+
+        if not user_id:
+            return JsonResponse({"error": "User ID not found in token"}, status=400)
+
+        try:
+            user = User.objects.get(id=user_id)
+            # Check if user is a member of this workspace
+            user_workspace = UserWorkspace.objects.get(workspace=board.workspace, user=user)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=404)
+        except UserWorkspace.DoesNotExist:
+            return JsonResponse({"error": "You do not have permission to access this workspace"}, status=403)
 
         # Check if the task exists
         try:

@@ -48,7 +48,16 @@ def login(request):
                     payload, "eY18N^G5uJ4#TpRZQc3!X*w9m7$L@KbS", algorithm="HS256"
                 )
 
-                return JsonResponse({"token": token}, status=200)
+                return JsonResponse({
+                    "token": token,
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name
+                    }
+                }, status=200)
             return JsonResponse(serializer.errors, status=401)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid data"}, status=400)
@@ -72,7 +81,7 @@ def me(request):
             user = User.objects.get(id=user_id)
             serializer = UserSerializer(user)
             return JsonResponse(serializer.data, status=200)
-        
+
         except User.DoesNotExist:
             return JsonResponse({"error": "User not found"}, status=404)
         except Exception as e:

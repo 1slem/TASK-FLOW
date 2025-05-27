@@ -10,10 +10,10 @@ const Navbar = () => {
   const [showModal, setShowModal] = useState(false);
 
 
-  
+
   const handleCreateWorkspace = (name) => {
     console.log("Creating workspace:", name);
-    
+
     // API call to create workspace
     fetch('http://localhost:8000/workspace/create', {
       method: 'POST',
@@ -41,7 +41,7 @@ const Navbar = () => {
       alert('Failed to create workspace. Please try again.');
     });
   };
-  
+
   useEffect(() => {
     // Check if user is authenticated by looking for token
     const token = localStorage.getItem('token');
@@ -63,8 +63,11 @@ const Navbar = () => {
     })
     .then(response => {
       if (response.ok) {
-        // Remove token from localStorage
+        // Remove token and user information from localStorage
         localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('username');
         setIsAuthenticated(false);
         navigate('/login');
       }
@@ -94,16 +97,17 @@ const Navbar = () => {
           >
             Home
           </NavLink>
-          
+
           {isAuthenticated && (
             <button
               onClick={() => setShowModal(true)}
+              data-create-workspace
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-300 transform hover:scale-105"
             >
               Create Workspace
             </button>
           )}
-          
+
           {isAuthenticated ? (
             <button
               onClick={handleLogout}
@@ -175,19 +179,20 @@ const Navbar = () => {
             >
               Home
             </NavLink>
-            
+
             {isAuthenticated && (
               <button
                 onClick={() => {
                   setShowModal(true);
                   toggleMenu();
                 }}
+                data-create-workspace-mobile
                 className="block w-full text-left bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all duration-300 my-2"
               >
                 Create Workspace
               </button>
             )}
-            
+
             {isAuthenticated ? (
               <button
                 onClick={() => {
